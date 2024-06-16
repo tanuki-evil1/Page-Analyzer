@@ -14,21 +14,22 @@
             </tr>
             </thead>
             <tbody>
-
+            {% for url in urls %}
             <tr>
-                <td>1</td>
+                <td>{{ url[0] }}</td>
                 <td>
                     <a href="/urls/1">
-                        https://youtube.com
+                        {{ url[1] }}
                     </a>
                 </td>
 
-                <td></td>
+                <td> {{ url[2] }}</td>
 
 
-                <td></td>
+                <td>хз</td>
 
             </tr>
+            {% endfor %}
 
             </tbody>
         </table>

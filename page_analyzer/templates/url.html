@@ -1,6 +1,6 @@
 {% extends 'layout.html' %}
 {% block content %}
-    <h1>Сайт: https://youtube.com</h1>
+    <h1>Сайт: {{ name }}</h1>
 
 
     <div class="table-responsive">
@@ -8,15 +8,15 @@
             <tbody>
             <tr>
                 <td>ID</td>
-                <td>1</td>
+                <td>{{ id }}</td>
             </tr>
             <tr>
                 <td>Имя</td>
-                <td>https://youtube.com</td>
+                <td>{{ name }}</td>
             </tr>
             <tr>
                 <td>Дата создания</td>
-                <td>2024-06-16</td>
+                <td>{{ created_at }}</td>
             </tr>
             </tbody>
         </table>
@@ -40,7 +40,6 @@
             </tr>
             </thead>
             <tbody>
-
             </tbody>
         </table>
     </div>
