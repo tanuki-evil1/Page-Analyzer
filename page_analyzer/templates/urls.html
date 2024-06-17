@@ -1,8 +1,6 @@
 {% extends 'layout.html' %}
 {% block content %}
     <h1>Сайты</h1>
-
-
     <div class="table-responsive">
         <table class="table table-bordered table-hover text-nowrap" data-test="urls">
             <thead>
@@ -18,7 +16,7 @@
             <tr>
                 <td>{{ url[0] }}</td>
                 <td>
-                    <a href="/urls/1">
+                    <a href="{{ url_for('get_url', url_id=url[0]) }}">
                         {{ url[1] }}
                     </a>
                 </td>
