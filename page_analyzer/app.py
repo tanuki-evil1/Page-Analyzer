@@ -14,8 +14,7 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 
 @app.route('/')
 def hello_world():
-    messages = get_flashed_messages(with_categories=True)
-    return render_template('index.html', messages=messages)
+    return render_template('index.html')
 
 
 @app.get('/urls')
@@ -40,7 +39,8 @@ def post_urls():
         return redirect(url_for('get_url', url_id=url_id), 302)
     else:
         flash('Некорректный URL', 'danger')
-        return redirect(url_for('hello_world'), 302)
+        messages = get_flashed_messages(with_categories=True)
+        return render_template('index.html', url=url, messages=messages)
 
 
 @app.get('/urls/<int:url_id>')
