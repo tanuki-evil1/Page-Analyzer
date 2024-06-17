@@ -5,6 +5,7 @@ import validators
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, get_flashed_messages
 from dotenv import load_dotenv
+from urllib.parse import urlparse
 
 load_dotenv()
 app = Flask(__name__)
@@ -30,9 +31,11 @@ def get_urls():
 def post_urls():
     url = request.form.get('url')
     if validators.url(url):
+        parsed_url = urlparse(url)
+        normalized_url = f'{parsed_url.scheme}://{parsed_url.hostname}'
         with psycopg2.connect(DATABASE_URL) as conn:
             with conn.cursor() as cur:
-                cur.execute('INSERT INTO urls (name, created_at) VALUES (%s, %s);', (url, datetime.now()))
+                cur.execute('INSERT INTO urls (name, created_at) VALUES (%s, %s);', (normalized_url, datetime.now()))
                 cur.execute('SELECT * FROM urls ORDER BY id DESC LIMIT 1;')
                 url_id = cur.fetchone()[0]
         flash('Страница успешно добавлена', 'success')
