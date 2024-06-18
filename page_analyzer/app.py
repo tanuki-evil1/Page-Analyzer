@@ -16,7 +16,7 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 
 
 @app.route('/')
-def hello_world():
+def index():
     return render_template('index.html')
 
 
@@ -24,7 +24,15 @@ def hello_world():
 def get_urls():
     with psycopg2.connect(DATABASE_URL) as conn:
         with conn.cursor(cursor_factory=extras.DictCursor) as cur:
-            cur.execute('SELECT urls.id, name, url_checks.created_at, url_checks.status_code FROM urls INNER JOIN url_checks ON urls.id = url_checks.url_id GROUP BY urls.id, name;')
+            cur.execute("""
+            SELECT
+                urls.id,
+                urls.name,
+                MAX(url_checks.created_at)
+            FROM urls
+            INNER JOIN url_checks ON urls.id = url_checks.url_id
+            GROUP BY urls.id, urls.name
+            """)
             all_urls = cur.fetchall()
     return render_template('urls.html', urls=all_urls)
 
@@ -66,8 +74,20 @@ def post_url(url_id):
         with conn.cursor() as cur:
             cur.execute('SELECT * FROM urls WHERE id = %s;', (url_id,))
             url = cur.fetchone()[1]
-            response = requests.get(url, allow_redirects=False)
-            status_code = response.status_code
-            cur.execute('INSERT INTO url_checks (url_id, status_code, created_at) VALUES (%s, %s, %s);',
-                        (url_id, status_code, datetime.now()))
+            response = requests.get(url)
+            try:
+                response.raise_for_status()
+                status_code = response.status_code
+                soup = BeautifulSoup(response.content, 'html.parser')
+                title = soup.title.get_text()
+                description = soup.find('meta', attrs={'name': 'description'})
+                h1 = soup.find('h1').get_text() if soup.find('h1') else ''
+                description = description.get('content') if description else ''
+                cur.execute("""
+                    INSERT INTO url_checks (url_id, h1, title, status_code, description, created_at) 
+                    VALUES (%s, %s, %s, %s, %s, %s);""",
+                            (url_id, str(h1), str(title), status_code, str(description), datetime.now()))
+            except requests.HTTPError:
+                flash('Произошла ошибка при проверке', 'danger')
+
     return redirect(url_for('get_url', url_id=url_id), 302)
