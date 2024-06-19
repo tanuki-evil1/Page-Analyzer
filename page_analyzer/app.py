@@ -29,7 +29,7 @@ def formatter(string: str) -> str:
     if string is None:
         return ''
     elif len(string) > 255:
-        return string[:251] + '...'
+        return string[:252] + '...'
     else:
         return string
 
@@ -94,7 +94,7 @@ def post_urls():
     else:
         flash('Некорректный URL', 'danger')
         flashed_messages = get_flashed_messages(with_categories=True)[0]
-        msg = {'type': flashed_messages[0], 'message': flashed_messages[1]}
+        msg = {'type': flashed_messages[0], 'msg': flashed_messages[1]}
         return render_template('index.html', url=url, messages=msg), 422
 
 
@@ -110,8 +110,11 @@ def get_url(url_id: int):
                         'ORDER BY id DESC;',
                         (url_id,))
             checks = cur.fetchall()
-    flashed_messages = get_flashed_messages(with_categories=True)[0]
-    msg = {'type': flashed_messages[0], 'message': flashed_messages[1]}
+    flashed_messages = get_flashed_messages(with_categories=True)
+    if flashed_messages:
+        msg = {'type': flashed_messages[0][0], 'msg': flashed_messages[0][1]}
+    else:
+        msg = ''
     return render_template('url.html', url=url, checks=checks, messages=msg)
 
 
