@@ -44,23 +44,21 @@ def get_urls():
     with psycopg2.connect(DATABASE_URL) as conn:
         with conn.cursor(cursor_factory=extras.DictCursor) as cur:
             cur.execute("""
-            WITH pre_result AS (
-                SELECT
-                    MAX(url_checks.id) AS last_id,
-                    urls.id,
-                    urls.name
-                FROM urls
-                LEFT JOIN url_checks ON urls.id = url_checks.url_id
-                GROUP BY urls.id, urls.name)
-
             SELECT
-                pre_result.id,
-                pre_result.name,
+                urls.id,
+                urls.name,
                 url_checks.created_at,
                 url_checks.status_code
-            FROM pre_result
-            LEFT JOIN url_checks ON pre_result.last_id = url_checks.id
-            ORDER BY pre_result.id DESC;
+            FROM urls
+            LEFT JOIN (
+                SELECT DISTINCT ON (url_id)
+                    url_id,
+                    created_at,
+                    status_code
+                FROM url_checks
+                ORDER BY url_id, created_at DESC
+                    ) AS url_checks ON urls.id = url_checks.url_id
+            ORDER BY urls.id DESC;
             """)
             urls = cur.fetchall()
     return render_template('urls.html', urls=urls)
@@ -72,6 +70,7 @@ def post_urls():
     if validators.url(url):
         parsed_url = urlparse(url)
         normalized_url = f'{parsed_url.scheme}://{parsed_url.hostname}'
+
         with psycopg2.connect(DATABASE_URL) as conn:
             with conn.cursor(cursor_factory=extras.DictCursor) as cur:
                 cur.execute("""
@@ -80,13 +79,18 @@ def post_urls():
                     WHERE name = %s
                     """, (normalized_url,))
                 f_url = cur.fetchone()
+
                 if f_url and f_url['name'] == normalized_url:
                     flash('Страница уже существует', 'info')
                     return redirect(url_for('get_url', url_id=f_url['id']), 302)
                 else:
                     cur.execute("""
-                    INSERT INTO urls (name, created_at) VALUES (%s, %s);""",
-                                (normalized_url, datetime.now()))
+                    INSERT INTO urls (
+                        name,
+                        created_at
+                    )
+                    VALUES (%s, %s);
+                    """, (normalized_url, datetime.now()))
                     cur.execute('SELECT id FROM urls ORDER BY id DESC LIMIT 1;')
                     url_id = cur.fetchone()[0]
                     flash('Страница успешно добавлена', 'success')
@@ -110,11 +114,8 @@ def get_url(url_id: int):
                         'ORDER BY id DESC;',
                         (url_id,))
             checks = cur.fetchall()
-    flashed_messages = get_flashed_messages(with_categories=True)
-    if flashed_messages:
-        msg = {'type': flashed_messages[0][0], 'msg': flashed_messages[0][1]}
-    else:
-        msg = ''
+    msg = get_flashed_messages(with_categories=True)
+    msg = {'type': msg[0][0], 'msg': msg[0][1]} if msg else ''
     return render_template('url.html', url=url, checks=checks, messages=msg)
 
 
@@ -140,13 +141,12 @@ def post_url(url_id: int):
                 (url_id, h1, title, status_code, description, created_at)
                 VALUES
                 (%s, %s, %s, %s, %s, %s);
-                """,
-                            (url_id,
-                             h1,
-                             title,
-                             status_code,
-                             description,
-                             datetime.now()))
+                """, (url_id,
+                      h1,
+                      title,
+                      status_code,
+                      description,
+                      datetime.now()))
                 flash('Страница успешно проверена', 'success')
             except requests.HTTPError:
                 flash('Произошла ошибка при проверке', 'danger')
