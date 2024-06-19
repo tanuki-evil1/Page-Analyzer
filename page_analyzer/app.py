@@ -1,3 +1,4 @@
+import bs4.element
 import psycopg2
 import requests
 import os
@@ -19,6 +20,18 @@ load_dotenv()
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 DATABASE_URL = os.getenv('DATABASE_URL')
+
+
+def formatter(string: str) -> str:
+    if isinstance(string, bs4.element.Tag):
+        string = string.get_text()
+
+    if string is None:
+        return ''
+    elif len(string) > 255:
+        return string[:251] + '...'
+    else:
+        return string
 
 
 @app.route('/')
@@ -61,11 +74,15 @@ def post_urls():
         normalized_url = f'{parsed_url.scheme}://{parsed_url.hostname}'
         with psycopg2.connect(DATABASE_URL) as conn:
             with conn.cursor(cursor_factory=extras.DictCursor) as cur:
-                cur.execute("SELECT id, name FROM urls WHERE name = %s", (normalized_url, ))
-                fetch_url = cur.fetchone()
-                if fetch_url['name'] == normalized_url:
+                cur.execute("""
+                    SELECT id, name
+                    FROM urls
+                    WHERE name = %s
+                    """, (normalized_url,))
+                f_url = cur.fetchone()
+                if f_url and f_url['name'] == normalized_url:
                     flash('Страница уже существует', 'info')
-                    return redirect(url_for('get_url', url_id=fetch_url['id']), 302)
+                    return redirect(url_for('get_url', url_id=f_url['id']), 302)
                 else:
                     cur.execute("""
                     INSERT INTO urls (name, created_at) VALUES (%s, %s);""",
@@ -78,7 +95,7 @@ def post_urls():
         flash('Некорректный URL', 'danger')
         flashed_messages = get_flashed_messages(with_categories=True)[0]
         msg = {'type': flashed_messages[0], 'message': flashed_messages[1]}
-        return render_template('index.html', url=url, messages=msg)
+        return render_template('index.html', url=url, messages=msg), 422
 
 
 @app.get('/urls/<int:url_id>')
@@ -107,12 +124,14 @@ def post_url(url_id: int):
             response = requests.get(url)
             try:
                 response.raise_for_status()
-                status_code = response.status_code
                 soup = BeautifulSoup(response.content, 'html.parser')
-                title = soup.find('title').get_text() if soup.find('title') else ''
+
+                status_code = response.status_code
+                title = formatter(soup.find('title'))
                 description = soup.find('meta', attrs={'name': 'description'})
-                h1 = soup.find('h1').get_text() if soup.find('h1') else ''
-                description = description.get('content') if description else ''
+                description = formatter(description.get('content'))
+                h1 = formatter(soup.find('h1'))
+
                 cur.execute("""
                 INSERT INTO url_checks
                 (url_id, h1, title, status_code, description, created_at)
@@ -120,10 +139,10 @@ def post_url(url_id: int):
                 (%s, %s, %s, %s, %s, %s);
                 """,
                             (url_id,
-                             str(h1),
-                             str(title),
+                             h1,
+                             title,
                              status_code,
-                             str(description),
+                             description,
                              datetime.now()))
             except requests.HTTPError:
                 flash('Произошла ошибка при проверке', 'danger')
