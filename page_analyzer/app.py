@@ -1,13 +1,19 @@
 import psycopg2
 import requests
-from psycopg2 import extras
 import os
 import validators
+from psycopg2 import extras
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, flash, get_flashed_messages
 from dotenv import load_dotenv
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
+from flask import (Flask,
+                   render_template,
+                   request,
+                   redirect,
+                   url_for,
+                   flash,
+                   get_flashed_messages)
 
 load_dotenv()
 app = Flask(__name__)
@@ -27,23 +33,24 @@ def get_urls():
             cur.execute("""
             WITH pre_result AS (
                 SELECT
-                    MAX(url_checks.id) AS last_id, 
+                    MAX(url_checks.id) AS last_id,
                     urls.id,
                     urls.name
                 FROM urls
-                INNER JOIN url_checks ON urls.id = url_checks.url_id
+                LEFT JOIN url_checks ON urls.id = url_checks.url_id
                 GROUP BY urls.id, urls.name)
 
-                SELECT
-                    pre_result.id,
-                    pre_result.name,
-                    url_checks.created_at,
-                    url_checks.status_code
-                FROM pre_result
-                INNER JOIN url_checks ON pre_result.last_id = url_checks.id
+            SELECT
+                pre_result.id,
+                pre_result.name,
+                url_checks.created_at,
+                url_checks.status_code
+            FROM pre_result
+            LEFT JOIN url_checks ON pre_result.last_id = url_checks.id
+            ORDER BY pre_result.id DESC;
             """)
-            all_urls = cur.fetchall()
-    return render_template('urls.html', urls=all_urls)
+            urls = cur.fetchall()
+    return render_template('urls.html', urls=urls)
 
 
 @app.post('/urls')
@@ -54,31 +61,39 @@ def post_urls():
         normalized_url = f'{parsed_url.scheme}://{parsed_url.hostname}'
         with psycopg2.connect(DATABASE_URL) as conn:
             with conn.cursor() as cur:
-                cur.execute('INSERT INTO urls (name, created_at) VALUES (%s, %s);', (normalized_url, datetime.now()))
-                cur.execute('SELECT * FROM urls ORDER BY id DESC LIMIT 1;')
+                cur.execute("""
+                INSERT INTO urls (name, created_at) VALUES (%s, %s);""",
+                            (normalized_url, datetime.now()))
+                cur.execute('SELECT id FROM urls ORDER BY id DESC LIMIT 1;')
                 url_id = cur.fetchone()[0]
         flash('Страница успешно добавлена', 'success')
         return redirect(url_for('get_url', url_id=url_id), 302)
     else:
         flash('Некорректный URL', 'danger')
-        messages = get_flashed_messages(with_categories=True)
-        return render_template('index.html', url=url, messages=messages)
+        flashed_messages = get_flashed_messages(with_categories=True)[0]
+        msg = {'type': flashed_messages[0], 'message': flashed_messages[1]}
+        return render_template('index.html', url=url, messages=msg)
 
 
 @app.get('/urls/<int:url_id>')
-def get_url(url_id):
+def get_url(url_id: int):
     with psycopg2.connect(DATABASE_URL) as conn:
         with conn.cursor(cursor_factory=extras.DictCursor) as cur:
             cur.execute('SELECT * FROM urls WHERE id = %s;', (url_id,))
             url = cur.fetchone()
-            cur.execute('SELECT * FROM url_checks WHERE url_id = %s ORDER BY id DESC;', (url_id,))
+            cur.execute('SELECT * '
+                        'FROM url_checks '
+                        'WHERE url_id = %s '
+                        'ORDER BY id DESC;',
+                        (url_id,))
             checks = cur.fetchall()
-    messages = get_flashed_messages(with_categories=True)  # Сделать ли словарем
-    return render_template('url.html', url=url, checks=checks, messages=messages)
+    flashed_messages = get_flashed_messages(with_categories=True)[0]
+    msg = {'type': flashed_messages[0], 'message': flashed_messages[1]}
+    return render_template('url.html', url=url, checks=checks, messages=msg)
 
 
-@app.post('/urls/<url_id>/checks')
-def post_url(url_id):
+@app.post('/urls/<int:url_id>/checks')
+def post_url(url_id: int):
     with psycopg2.connect(DATABASE_URL) as conn:
         with conn.cursor() as cur:
             cur.execute('SELECT * FROM urls WHERE id = %s;', (url_id,))
@@ -93,10 +108,17 @@ def post_url(url_id):
                 h1 = soup.find('h1').get_text() if soup.find('h1') else ''
                 description = description.get('content') if description else ''
                 cur.execute("""
-                    INSERT INTO url_checks (url_id, h1, title, status_code, description, created_at) 
-                    VALUES (%s, %s, %s, %s, %s, %s);""",
-                            (url_id, str(h1), str(title), status_code, str(description), datetime.now()))
+                INSERT INTO url_checks
+                (url_id, h1, title, status_code, description, created_at)
+                VALUES
+                (%s, %s, %s, %s, %s, %s);
+                """,
+                            (url_id,
+                             str(h1),
+                             str(title),
+                             status_code,
+                             str(description),
+                             datetime.now()))
             except requests.HTTPError:
                 flash('Произошла ошибка при проверке', 'danger')
-
     return redirect(url_for('get_url', url_id=url_id), 302)

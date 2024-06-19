@@ -1,13 +1,13 @@
 {% extends 'layout.html' %}
+
 {% block flash %}
     {% if messages %}
-        <div class="alert alert-{{ messages[0][0] }}" role="alert">{{ messages[0][1] }}</div>
+        <div class="alert alert-{{ messages['type'] }}" role="alert">{{ messages['message'] }}</div>
     {% endif %}
 {% endblock %}
+
 {% block content %}
     <h1></h1>
-
-
     <div class="row">
         <div class="col-12 col-md-10 col-lg-8 mx-auto border rounded-3 bg-light p-5">
             <h1 class="display-3">Анализатор страниц</h1>
@@ -15,7 +15,8 @@
             <form action="{{ url_for('post_urls') }}" method="post" class="d-flex justify-content-center">
                 <input type="text" name="url" placeholder="https://www.example.com" value="{{ url }}"
                        class="form-control form-control-lg" required>
-                <input type="submit" class="btn btn-primary  btn-lg ms-3 px-5 text-uppercase mx-3" value="Проверить">
+                <input type="submit" class="btn btn-primary  btn-lg ms-3 px-5 text-uppercase mx-3"
+                       value="Проверить">
             </form>
         </div>
     </div>
