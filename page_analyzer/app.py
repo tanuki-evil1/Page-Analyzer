@@ -25,13 +25,22 @@ def get_urls():
     with psycopg2.connect(DATABASE_URL) as conn:
         with conn.cursor(cursor_factory=extras.DictCursor) as cur:
             cur.execute("""
-            SELECT
-                urls.id,
-                urls.name,
-                MAX(url_checks.created_at)
-            FROM urls
-            INNER JOIN url_checks ON urls.id = url_checks.url_id
-            GROUP BY urls.id, urls.name
+            WITH pre_result AS (
+                SELECT
+                    MAX(url_checks.id) AS last_id, 
+                    urls.id,
+                    urls.name
+                FROM urls
+                INNER JOIN url_checks ON urls.id = url_checks.url_id
+                GROUP BY urls.id, urls.name)
+
+                SELECT
+                    pre_result.id,
+                    pre_result.name,
+                    url_checks.created_at,
+                    url_checks.status_code
+                FROM pre_result
+                INNER JOIN url_checks ON pre_result.last_id = url_checks.id
             """)
             all_urls = cur.fetchall()
     return render_template('urls.html', urls=all_urls)
