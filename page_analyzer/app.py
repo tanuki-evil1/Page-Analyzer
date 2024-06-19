@@ -147,6 +147,7 @@ def post_url(url_id: int):
                              status_code,
                              description,
                              datetime.now()))
+                flash('Страница успешно проверена', 'success')
             except requests.HTTPError:
                 flash('Произошла ошибка при проверке', 'danger')
     return redirect(url_for('get_url', url_id=url_id), 302)
