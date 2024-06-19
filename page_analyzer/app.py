@@ -70,36 +70,36 @@ def post_urls():
     if validators.url(url):
         parsed_url = urlparse(url)
         normalized_url = f'{parsed_url.scheme}://{parsed_url.hostname}'
+    else:
+        flash('Некорректный URL', 'danger')
+        flashed_messages = get_flashed_messages(with_categories=True)[0]
+        msg = {'type': flashed_messages[0], 'msg': flashed_messages[1]}
+        return render_template('index.html', url=url, messages=msg), 422
 
-        with psycopg2.connect(DATABASE_URL) as conn:
-            with conn.cursor(cursor_factory=extras.DictCursor) as cur:
-                cur.execute("""
+    with psycopg2.connect(DATABASE_URL) as conn:
+        with conn.cursor(cursor_factory=extras.DictCursor) as cur:
+            cur.execute("""
                     SELECT id, name
                     FROM urls
                     WHERE name = %s
                     """, (normalized_url,))
-                f_url = cur.fetchone()
+            f_url = cur.fetchone()
 
-                if f_url and f_url['name'] == normalized_url:
-                    flash('Страница уже существует', 'info')
-                    return redirect(url_for('get_url', url_id=f_url['id']), 302)
-                else:
-                    cur.execute("""
+            if f_url and f_url['name'] == normalized_url:
+                flash('Страница уже существует', 'info')
+                return redirect(url_for('get_url', url_id=f_url['id']), 302)
+            else:
+                cur.execute("""
                     INSERT INTO urls (
                         name,
                         created_at
                     )
                     VALUES (%s, %s);
                     """, (normalized_url, datetime.now()))
-                    cur.execute('SELECT id FROM urls ORDER BY id DESC LIMIT 1;')
-                    url_id = cur.fetchone()[0]
-                    flash('Страница успешно добавлена', 'success')
-                    return redirect(url_for('get_url', url_id=url_id), 302)
-    else:
-        flash('Некорректный URL', 'danger')
-        flashed_messages = get_flashed_messages(with_categories=True)[0]
-        msg = {'type': flashed_messages[0], 'msg': flashed_messages[1]}
-        return render_template('index.html', url=url, messages=msg), 422
+                cur.execute('SELECT id FROM urls ORDER BY id DESC LIMIT 1;')
+                url_id = cur.fetchone()[0]
+                flash('Страница успешно добавлена', 'success')
+                return redirect(url_for('get_url', url_id=url_id), 302)
 
 
 @app.get('/urls/<int:url_id>')
