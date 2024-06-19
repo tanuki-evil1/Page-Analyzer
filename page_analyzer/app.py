@@ -60,14 +60,20 @@ def post_urls():
         parsed_url = urlparse(url)
         normalized_url = f'{parsed_url.scheme}://{parsed_url.hostname}'
         with psycopg2.connect(DATABASE_URL) as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                INSERT INTO urls (name, created_at) VALUES (%s, %s);""",
-                            (normalized_url, datetime.now()))
-                cur.execute('SELECT id FROM urls ORDER BY id DESC LIMIT 1;')
-                url_id = cur.fetchone()[0]
-        flash('Страница успешно добавлена', 'success')
-        return redirect(url_for('get_url', url_id=url_id), 302)
+            with conn.cursor(cursor_factory=extras.DictCursor) as cur:
+                cur.execute("SELECT id, name FROM urls WHERE name = %s", (normalized_url, ))
+                fetch_url = cur.fetchone()
+                if fetch_url['name'] == normalized_url:
+                    flash('Страница уже существует', 'info')
+                    return redirect(url_for('get_url', url_id=fetch_url['id']), 302)
+                else:
+                    cur.execute("""
+                    INSERT INTO urls (name, created_at) VALUES (%s, %s);""",
+                                (normalized_url, datetime.now()))
+                    cur.execute('SELECT id FROM urls ORDER BY id DESC LIMIT 1;')
+                    url_id = cur.fetchone()[0]
+                    flash('Страница успешно добавлена', 'success')
+                    return redirect(url_for('get_url', url_id=url_id), 302)
     else:
         flash('Некорректный URL', 'danger')
         flashed_messages = get_flashed_messages(with_categories=True)[0]
@@ -103,7 +109,7 @@ def post_url(url_id: int):
                 response.raise_for_status()
                 status_code = response.status_code
                 soup = BeautifulSoup(response.content, 'html.parser')
-                title = soup.title.get_text()
+                title = soup.find('title').get_text() if soup.find('title') else ''
                 description = soup.find('meta', attrs={'name': 'description'})
                 h1 = soup.find('h1').get_text() if soup.find('h1') else ''
                 description = description.get('content') if description else ''
