@@ -1,10 +1,6 @@
-import bs4.element
-import psycopg2
 import requests
 import os
 import validators
-from psycopg2 import extras
-from datetime import datetime
 from dotenv import load_dotenv
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
@@ -16,22 +12,13 @@ from flask import (Flask,
                    flash,
                    get_flashed_messages)
 
+from page_analyzer.db import get_all_urls, get_url_from_urls, get_last_url_id, insert_url, get_url_checks, insert_check
+from page_analyzer.formatters import format_data_for_db
+
 load_dotenv()
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 DATABASE_URL = os.getenv('DATABASE_URL')
-
-
-def formatter(string: str) -> str:
-    if isinstance(string, bs4.element.Tag):
-        string = string.get_text()
-
-    if string is None:
-        return ''
-    elif len(string) > 255:
-        return string[:252] + '...'
-    else:
-        return string
 
 
 @app.route('/')
@@ -41,113 +28,62 @@ def index():
 
 @app.get('/urls')
 def get_urls():
-    with psycopg2.connect(DATABASE_URL) as conn:
-        with conn.cursor(cursor_factory=extras.DictCursor) as cur:
-            cur.execute("""
-            SELECT
-                urls.id,
-                urls.name,
-                url_checks.created_at,
-                url_checks.status_code
-            FROM urls
-            LEFT JOIN (
-                SELECT DISTINCT ON (url_id)
-                    url_id,
-                    created_at,
-                    status_code
-                FROM url_checks
-                ORDER BY url_id, created_at DESC
-                    ) AS url_checks ON urls.id = url_checks.url_id
-            ORDER BY urls.id DESC;
-            """)
-            urls = cur.fetchall()
+    urls = get_all_urls(DATABASE_URL)
     return render_template('urls.html', urls=urls)
 
 
 @app.post('/urls')
 def post_urls():
     url = request.form.get('url')
-    if validators.url(url):
-        parsed_url = urlparse(url)
-        normalized_url = f'{parsed_url.scheme}://{parsed_url.hostname}'
-    else:
+    if not validators.url(url):
         flash('Некорректный URL', 'danger')
         flashed_messages = get_flashed_messages(with_categories=True)[0]
         msg = {'type': flashed_messages[0], 'msg': flashed_messages[1]}
         return render_template('index.html', url=url, messages=msg), 422
 
-    with psycopg2.connect(DATABASE_URL) as conn:
-        with conn.cursor(cursor_factory=extras.DictCursor) as cur:
-            cur.execute("""
-                    SELECT id, name
-                    FROM urls
-                    WHERE name = %s
-                    """, (normalized_url,))
-            f_url = cur.fetchone()
+    parsed_url = urlparse(url)
+    normalized_url = f'{parsed_url.scheme}://{parsed_url.hostname}'
+    fetched_url = get_url_from_urls(DATABASE_URL, normalized_url)
 
-            if f_url and f_url['name'] == normalized_url:
-                flash('Страница уже существует', 'info')
-                return redirect(url_for('get_url', url_id=f_url['id']), 302)
-            else:
-                cur.execute("""
-                    INSERT INTO urls (
-                        name,
-                        created_at
-                    )
-                    VALUES (%s, %s);
-                    """, (normalized_url, datetime.now()))
-                cur.execute('SELECT id FROM urls ORDER BY id DESC LIMIT 1;')
-                url_id = cur.fetchone()[0]
-                flash('Страница успешно добавлена', 'success')
-                return redirect(url_for('get_url', url_id=url_id), 302)
+    if fetched_url:
+        flash('Страница уже существует', 'info')
+        return redirect(url_for('get_url', url_id=fetched_url['id']), 302)
+
+    insert_url(DATABASE_URL, normalized_url)
+    url_id = get_last_url_id(DATABASE_URL, fetched_url)
+    flash('Страница успешно добавлена', 'success')
+    return redirect(url_for('get_url', url_id=url_id), 302)
 
 
 @app.get('/urls/<int:url_id>')
 def get_url(url_id: int):
-    with psycopg2.connect(DATABASE_URL) as conn:
-        with conn.cursor(cursor_factory=extras.DictCursor) as cur:
-            cur.execute('SELECT * FROM urls WHERE id = %s;', (url_id,))
-            url = cur.fetchone()
-            cur.execute('SELECT * '
-                        'FROM url_checks '
-                        'WHERE url_id = %s '
-                        'ORDER BY id DESC;',
-                        (url_id,))
-            checks = cur.fetchall()
     msg = get_flashed_messages(with_categories=True)
     msg = {'type': msg[0][0], 'msg': msg[0][1]} if msg else ''
+    url = get_url_from_urls(DATABASE_URL, url_id)
+    checks = get_url_checks(DATABASE_URL, url_id)
     return render_template('url.html', url=url, checks=checks, messages=msg)
 
 
 @app.post('/urls/<int:url_id>/checks')
 def post_url(url_id: int):
-    with psycopg2.connect(DATABASE_URL) as conn:
-        with conn.cursor() as cur:
-            cur.execute('SELECT * FROM urls WHERE id = %s;', (url_id,))
-            url = cur.fetchone()[1]
-            response = requests.get(url)
-            try:
-                response.raise_for_status()
-                soup = BeautifulSoup(response.content, 'html.parser')
+    url = get_url_from_urls(DATABASE_URL, url_id)['name']
+    response = requests.get(url)
+    try:
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
+        status_code = response.status_code
+        title = format_data_for_db(soup.find('title'))
+        description = format_data_for_db(soup.find('meta', attrs={'name': 'description'}))
+        h1 = format_data_for_db(soup.find('h1'))
+        url_check = {'status_code': status_code,
+                     'title': title,
+                     'description': description,
+                     'h1': h1,
+                     'url_id': url_id}
 
-                status_code = response.status_code
-                title = formatter(soup.find('title'))
-                description = soup.find('meta', attrs={'name': 'description'})
-                description = formatter(description.get('content'))
-                h1 = formatter(soup.find('h1'))
+        flash('Страница успешно проверена', 'success')
+        insert_check(DATABASE_URL, url_check=url_check)
+    except requests.HTTPError:
+        flash('Произошла ошибка при проверке', 'danger')
 
-                cur.execute("""
-                INSERT INTO url_checks
-                (url_id, h1, title, status_code, description, created_at)
-                VALUES
-                (%s, %s, %s, %s, %s, %s);
-                """, (url_id,
-                      h1,
-                      title,
-                      status_code,
-                      description,
-                      datetime.now()))
-                flash('Страница успешно проверена', 'success')
-            except requests.HTTPError:
-                flash('Произошла ошибка при проверке', 'danger')
     return redirect(url_for('get_url', url_id=url_id), 302)
