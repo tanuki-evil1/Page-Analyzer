@@ -12,7 +12,12 @@ from flask import (Flask,
                    flash,
                    get_flashed_messages)
 
-from page_analyzer.db import get_all_urls, get_url_from_urls, get_last_url_id, insert_url, get_url_checks, insert_check
+from page_analyzer.db import (get_all_urls,
+                              get_url_from_urls,
+                              get_last_url_id,
+                              insert_url,
+                              get_url_checks,
+                              insert_check)
 from page_analyzer.formatters import format_data_for_db
 
 load_dotenv()
@@ -73,7 +78,8 @@ def post_url(url_id: int):
         soup = BeautifulSoup(response.content, 'html.parser')
         status_code = response.status_code
         title = format_data_for_db(soup.find('title'))
-        description = format_data_for_db(soup.find('meta', attrs={'name': 'description'}))
+        description = format_data_for_db(soup.find(
+            'meta', attrs={'name': 'description'}))
         h1 = format_data_for_db(soup.find('h1'))
         url_check = {'status_code': status_code,
                      'title': title,
