@@ -1,4 +1,8 @@
+from urllib.parse import urlparse
+
 import bs4
+
+from page_analyzer.db import get_url_from_urls
 
 
 def format_data_for_db(string: str) -> str:
@@ -14,3 +18,8 @@ def format_data_for_db(string: str) -> str:
         return string[:252] + '...'
     else:
         return string
+
+
+def normalize_url(url):
+    parsed_url = urlparse(url)
+    return f'{parsed_url.scheme}://{parsed_url.hostname}'
