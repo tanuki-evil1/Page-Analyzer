@@ -1,8 +1,5 @@
-from urllib.parse import urlparse
-
 import bs4
-
-from page_analyzer.db import get_url_from_urls
+from urllib.parse import urlparse
 
 
 def format_data_for_db(string: str) -> str:

@@ -1,6 +1,5 @@
-from datetime import datetime
-
 import psycopg2
+from datetime import datetime
 from psycopg2 import extras
 
 
