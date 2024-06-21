@@ -1,14 +1,14 @@
-import bs4
 from urllib.parse import urlparse
 
 
-def format_data_for_db(string: str) -> str:
-    if isinstance(string, bs4.element.Tag):
-        if string.get('content'):
-            string = string.get('content')
-        else:
-            string = string.get_text()
+def get_info_from_tag(tag):
+    if tag.get('content'):
+        return tag.get('content')
+    else:
+        return tag.get_text()
 
+
+def format_data_for_db(string: str) -> str:
     if string is None:
         return ''
     elif len(string) > 255:
