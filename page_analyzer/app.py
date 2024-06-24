@@ -35,9 +35,8 @@ def get_urls():
         urls_join_check.append({'id': url['id'], 'name': url['name']})
         for check in all_checks:
             if url['id'] == check['url_id']:
-                urls_join_check[-1].update(
-                    {'created_at': check['created_at'],
-                     'status_code': check['status_code']})
+                urls_join_check[-1]['created_at'] = check['created_at']
+                urls_join_check[-1]['status_code'] = check['status_code']
                 break
     return render_template('urls.html', urls=urls_join_check)
 
