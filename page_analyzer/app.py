@@ -50,6 +50,7 @@ def post_urls():
     conn, cur = db.open_connection_db(DATABASE_URL)
     url_id = db.insert_url(cur, normalized_url)
     db.close_connection_db(conn, cur)
+
     flash('Страница успешно добавлена', 'success')
     return redirect(url_for('get_url', url_id=url_id), 302)
 
@@ -78,13 +79,15 @@ def post_url(url_id: int):
     conn, cur = db.open_connection_db(DATABASE_URL)
     url = db.get_url_from_urls_by_id(cur, url_id)['name']
     db.close_connection_db(conn, cur)
+
     if not url:
         return render_template('404.html'), 404
+
     try:
         url_check = get_seo(url, url_id)
         flash('Страница успешно проверена', 'success')
         conn, cur = db.open_connection_db(DATABASE_URL)
-        db.insert_check(cur, url_check=url_check)
+        db.insert_check(cur, url_check)
         db.close_connection_db(conn, cur)
     except ValueError:
         flash('Произошла ошибка при проверке', 'danger')
