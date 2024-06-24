@@ -9,12 +9,12 @@ def open_connection_db(database_url: str):
     return conn, cur
 
 
-def select_query(cur, query: str, params: tuple = (), all_matched=True):
+def select_query(cur, query: str, params=tuple(), all_matched=True):
     cur.execute(query, params)
     return cur.fetchall() if all_matched else cur.fetchone()
 
 
-def insert_query(cur, table: str, query: str, params: tuple = ()) -> str:
+def insert_query(cur, table: str, query: str, params=tuple()) -> str:
     cur.execute(query, params)
     cur.execute(f'SELECT id FROM {table} ORDER BY id DESC LIMIT 1;')
     return cur.fetchone()[0]
@@ -52,7 +52,7 @@ def get_url_from_urls_by_id(cur, search: int):
     query = """
             SELECT *
             FROM urls
-            HERE id = %s;
+            WHERE id = %s;
             """
     return select_query(cur, query, params=(search,), all_matched=False)
 
