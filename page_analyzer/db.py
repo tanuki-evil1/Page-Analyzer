@@ -3,10 +3,30 @@ from datetime import datetime
 from psycopg2 import extras
 
 
-def get_all_urls(database_url: str):
-    with psycopg2.connect(database_url) as conn:
-        with conn.cursor(cursor_factory=extras.DictCursor) as cur:
-            cur.execute("""
+def open_connection_db(database_url):
+    conn = psycopg2.connect(database_url)
+    cur = conn.cursor(cursor_factory=extras.DictCursor)
+    return conn, cur
+
+
+def select_query(query, cur, all_matched=True):
+    cur.execute(*query) if isinstance(query, tuple) else cur.execute(query)
+    return cur.fetchall() if all_matched else cur.fetchone()
+
+
+def insert_query(query, cur, table):
+    cur.execute(*query)
+    cur.execute(f'SELECT id FROM {table} ORDER BY id DESC LIMIT 1;')
+    return cur.fetchone()[0]
+
+
+def close_connection_db(conn, cur):
+    conn.close()
+    cur.close()
+
+
+def get_all_urls(cur):
+    query = """
             SELECT
                 urls.id,
                 urls.name,
@@ -22,57 +42,50 @@ def get_all_urls(database_url: str):
                 ORDER BY url_id, created_at DESC
                     ) AS url_checks ON urls.id = url_checks.url_id
             ORDER BY urls.id DESC;
-            """)
-            return cur.fetchall()
+            """
+    return select_query(query, cur)
 
 
-def get_url_from_urls(database_url: str, search: int or str):
-    with psycopg2.connect(database_url) as conn:
-        with conn.cursor(cursor_factory=extras.DictCursor) as cur:
-            if isinstance(search, int):
-                cur.execute("""
+def get_url_from_urls_by_id(cur, search: int):
+    query = """
                         SELECT *
                         FROM urls
                         WHERE id = %s
-                        """, (search,))
-            else:
-                cur.execute("""
+                        """, (search,)
+    return select_query(query, cur, all_matched=False)
+
+
+def get_url_from_urls_by_name(cur, name: str):
+    query = """
                         SELECT *
                         FROM urls
                         WHERE name = %s
-                        """, (search,))
-            return cur.fetchone()
+                        """, (name,)
+    return select_query(query, cur, all_matched=False)
 
 
-def insert_url(database_url: str, url: str):
-    with psycopg2.connect(database_url) as conn:
-        with conn.cursor(cursor_factory=extras.DictCursor) as cur:
-            cur.execute("""
+def insert_url(cur, url: str):
+    query = """
                         INSERT INTO urls (
                             name,
                             created_at
                         )
                         VALUES (%s, %s);
-                        """, (url, datetime.now()))
-            cur.execute('SELECT id FROM urls ORDER BY id DESC LIMIT 1;')
-            return cur.fetchone()[0]
+                        """, (url, datetime.now())
+    insert_query(query, cur, 'urls')
 
 
-def get_url_checks(database_url: str, url_id: int):
-    with psycopg2.connect(database_url) as conn:
-        with conn.cursor(cursor_factory=extras.DictCursor) as cur:
-            cur.execute('SELECT * '
-                        'FROM url_checks '
-                        'WHERE url_id = %s '
-                        'ORDER BY id DESC;',
-                        (url_id,))
-            return cur.fetchall()
+def get_url_checks(cur, url_id: int):
+    query = """
+                    SELECT *
+                    FROM url_checks
+                    WHERE url_id = %s
+                    ORDER BY id DESC;""", (url_id,)
+    return select_query(query, cur)
 
 
-def insert_check(database_url: str, url_check: dict):
-    with psycopg2.connect(database_url) as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
+def insert_check(cur, url_check: dict):
+    query = """
                     INSERT INTO url_checks
                     (url_id, h1, title, status_code, description, created_at)
                     VALUES
@@ -82,4 +95,5 @@ def insert_check(database_url: str, url_check: dict):
                           url_check['title'],
                           url_check['status_code'],
                           url_check['description'],
-                          datetime.now()))
+                          datetime.now())
+    insert_query(query, cur, 'url_checks')
