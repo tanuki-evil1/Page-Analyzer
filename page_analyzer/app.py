@@ -30,11 +30,10 @@ def get_urls():
     all_checks = db.get_all_checks(cur)
     db.close_connection_db(conn, cur)
 
-    urls_join_check = []
-    for url in urls:
-        urls_join_check.append({'id': url['id'], 'name': url['name']})
+    urls_join_check = [{'id': url['id'], 'name': url['name']} for url in urls]
+    for url in range(len(urls)):
         for check in all_checks:
-            if url['id'] == check['url_id']:
+            if urls[url]['id'] == check['url_id']:
                 urls_join_check[-1]['created_at'] = check['created_at']
                 urls_join_check[-1]['status_code'] = check['status_code']
                 break
