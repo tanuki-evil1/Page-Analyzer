@@ -21,7 +21,6 @@ def insert_query(cur, table: str, query: str, params: tuple = ()) -> str:
 
 
 def close_connection_db(cur, conn) -> None:
-    conn.commit()
     cur.close()
     conn.close()
 
@@ -30,19 +29,21 @@ def get_all_urls(cur):
     query = """
             SELECT
                 urls.id,
-                urls.name,
-                url_checks.created_at,
-                url_checks.status_code
+                urls.name
             FROM urls
-            LEFT JOIN (
-                SELECT DISTINCT ON (url_id)
-                    url_id,
-                    created_at,
-                    status_code
-                FROM url_checks
-                ORDER BY url_id, created_at DESC
-                    ) AS url_checks ON urls.id = url_checks.url_id
             ORDER BY urls.id DESC;
+            """
+    return select_query(cur, query)
+
+
+def get_all_checks(cur):
+    query = """
+            SELECT DISTINCT ON (url_id)
+                url_id,
+                created_at,
+                status_code
+            FROM url_checks
+            ORDER BY url_id DESC;
             """
     return select_query(cur, query)
 

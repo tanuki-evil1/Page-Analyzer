@@ -27,8 +27,19 @@ def index():
 def get_urls():
     conn, cur = db.open_connection_db(DATABASE_URL)
     urls = db.get_all_urls(cur)
+    all_checks = db.get_all_checks(cur)
+    urls_join_check = []
+    for url in urls:
+        for check in all_checks:
+            if url['id'] == check['url_id']:
+                urls_join_check.append({'id': url['id'],
+                                        'name': url['name'],
+                                        'created_at': check['created_at'],
+                                        'status_code': check['status_code']})
+                break
+
     db.close_connection_db(conn, cur)
-    return render_template('urls.html', urls=urls)
+    return render_template('urls.html', urls=urls_join_check)
 
 
 @app.post('/urls')
@@ -49,6 +60,7 @@ def post_urls():
 
     conn, cur = db.open_connection_db(DATABASE_URL)
     url_id = db.insert_url(cur, normalized_url)
+    conn.commit()
     db.close_connection_db(conn, cur)
 
     flash('Страница успешно добавлена', 'success')
@@ -88,6 +100,7 @@ def post_url(url_id: int):
         flash('Страница успешно проверена', 'success')
         conn, cur = db.open_connection_db(DATABASE_URL)
         db.insert_check(cur, url_check)
+        conn.commit()
         db.close_connection_db(conn, cur)
     except ValueError:
         flash('Произошла ошибка при проверке', 'danger')
