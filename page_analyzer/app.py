@@ -28,17 +28,16 @@ def get_urls():
     conn, cur = db.open_connection_db(DATABASE_URL)
     urls = db.get_all_urls(cur)
     all_checks = db.get_all_checks(cur)
+    db.close_connection_db(conn, cur)
+
     urls_join_check = []
     for url in urls:
+        urls_join_check.append({'id': url['id'], 'name': url['name']})
         for check in all_checks:
             if url['id'] == check['url_id']:
-                urls_join_check.append({'id': url['id'],
-                                        'name': url['name'],
-                                        'created_at': check['created_at'],
-                                        'status_code': check['status_code']})
+                urls_join_check[-1].update({'created_at': check['created_at'],
+                                            'status_code': check['status_code']})
                 break
-
-    db.close_connection_db(conn, cur)
     return render_template('urls.html', urls=urls_join_check)
 
 
