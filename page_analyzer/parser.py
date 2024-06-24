@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from page_analyzer.formatters import format_data_for_db, get_info_from_tag
 
 
-def get_seo(url, url_id):
+def get_seo(url: str, url_id: int) -> dict:
     try:
         response = requests.get(url)
         response.raise_for_status()

@@ -67,9 +67,9 @@ def get_url_from_urls_by_name(cur, name: str):
 
 def insert_url(cur, url: str) -> str:
     query = """
-            INSERT INTO urls 
+            INSERT INTO urls
             (name, created_at)
-            VALUES 
+            VALUES
             (%s, %s);
             """
     return insert_query(cur, 'urls', query, params=(url, datetime.now()))
