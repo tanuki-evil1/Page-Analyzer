@@ -24,8 +24,6 @@ def format_data_for_db(string: str or None) -> str or None:
         return string
 
 
-
-
 def normalize_url(url: str) -> str:
     parsed_url = urlparse(url)
     return f'{parsed_url.scheme}://{parsed_url.hostname}'
