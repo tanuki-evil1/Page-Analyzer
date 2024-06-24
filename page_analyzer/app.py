@@ -1,5 +1,4 @@
 import os
-import validators
 from dotenv import load_dotenv
 from flask import (Flask,
                    render_template,
@@ -10,7 +9,7 @@ from flask import (Flask,
                    get_flashed_messages)
 
 from page_analyzer import db
-from page_analyzer.formatters import normalize_url
+from page_analyzer.formatters import normalize_url, validate_url
 from page_analyzer.parser import get_seo
 
 load_dotenv()
@@ -33,10 +32,8 @@ def get_urls():
 @app.post('/urls')
 def post_urls():
     url = request.form.get('url')
-    if not validators.url(url):
-        flash('Некорректный URL', 'danger')
-        flashed_messages = get_flashed_messages(with_categories=True)[0]
-        msg = {'type': flashed_messages[0], 'msg': flashed_messages[1]}
+    if not validate_url(url):
+        msg = {'type': 'danger', 'msg': 'Некорректный URL'}
         return render_template('index.html', url=url, messages=msg), 422
 
     normalized_url = normalize_url(url)
@@ -46,8 +43,7 @@ def post_urls():
         flash('Страница уже существует', 'info')
         return redirect(url_for('get_url', url_id=fetched_url['id']), 302)
 
-    db.insert_url(DATABASE_URL, normalized_url)
-    url_id = db.get_last_url_id(DATABASE_URL, fetched_url)
+    url_id = db.insert_url(DATABASE_URL, normalized_url)
     flash('Страница успешно добавлена', 'success')
     return redirect(url_for('get_url', url_id=url_id), 302)
 
@@ -57,6 +53,8 @@ def get_url(url_id: int):
     msg = get_flashed_messages(with_categories=True)
     msg = {'type': msg[0][0], 'msg': msg[0][1]} if msg else ''
     url = db.get_url_from_urls(DATABASE_URL, url_id)
+    if not url:
+        return render_template('404.html'), 404
     checks = db.get_url_checks(DATABASE_URL, url_id)
     return render_template('url.html', url=url, checks=checks, messages=msg)
 
@@ -72,3 +70,8 @@ def post_url(url_id: int):
         flash('Произошла ошибка при проверке', 'danger')
 
     return redirect(url_for('get_url', url_id=url_id), 302)
+
+
+@app.errorhandler(404)
+def page_not_found():
+    return render_template('404.html'), 404

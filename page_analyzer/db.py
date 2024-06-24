@@ -44,13 +44,6 @@ def get_url_from_urls(database_url: str, search: int or str):
             return cur.fetchone()
 
 
-def get_last_url_id(database_url: str, url: str):
-    with psycopg2.connect(database_url) as conn:
-        with conn.cursor(cursor_factory=extras.DictCursor) as cur:
-            cur.execute('SELECT id FROM urls ORDER BY id DESC LIMIT 1;')
-            return cur.fetchone()[0]
-
-
 def insert_url(database_url: str, url: str):
     with psycopg2.connect(database_url) as conn:
         with conn.cursor(cursor_factory=extras.DictCursor) as cur:
@@ -61,6 +54,8 @@ def insert_url(database_url: str, url: str):
                         )
                         VALUES (%s, %s);
                         """, (url, datetime.now()))
+            cur.execute('SELECT id FROM urls ORDER BY id DESC LIMIT 1;')
+            return cur.fetchone()[0]
 
 
 def get_url_checks(database_url: str, url_id: int):
