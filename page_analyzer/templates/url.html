@@ -1,11 +1,11 @@
 {% extends 'layout.html' %}
 {% block flash %}
     {% if messages %}
-        <div class="alert alert-{{ messages['type'] }}" role="alert">{{ messages['msg'] }}</div>
+        <div class="alert alert-{{ messages.type }}" role="alert">{{ messages.msg }}</div>
     {% endif %}
 {% endblock %}
 {% block content %}
-    <h1>Сайт: {{ url['name'] }}</h1>
+    <h1>Сайт: {{ url.name }}</h1>
 
 
     <div class="table-responsive">
@@ -13,22 +13,22 @@
             <tbody>
             <tr>
                 <td>ID</td>
-                <td>{{ url['id'] }}</td>
+                <td>{{ url.id }}</td>
             </tr>
             <tr>
                 <td>Имя</td>
-                <td>{{ url['name'] }}</td>
+                <td>{{ url.name }}</td>
             </tr>
             <tr>
                 <td>Дата создания</td>
-                <td>{{ url['created_at'] }}</td>
+                <td>{{ url.created_at }}</td>
             </tr>
             </tbody>
         </table>
     </div>
 
     <h2 class="mt-5 mb-3">Проверки</h2>
-    <form method="post" action="{{ url_for('post_url', url_id=url['id']) }}">
+    <form method="post" action="{{ url_for('post_url', url_id=url.id) }}">
         <input type="submit" class="btn btn-primary" value="Запустить проверку">
     </form>
 
@@ -47,12 +47,12 @@
             <tbody>
             {% for check in checks %}
                 <tr>
-                    <td> {{ check['id'] }}</td>
-                    <td> {{ check['status_code'] }}</td>
-                    <td> {{ check['h1'] }}</td>
-                    <td> {{ check['title'] }}</td>
-                    <td> {{ check['description'] }}</td>
-                    <td> {{ check['created_at'] }}</td>
+                    <td> {{ check.id }}</td>
+                    <td> {{ check.status_code }}</td>
+                    <td> {{ check.h1 }}</td>
+                    <td> {{ check.title }}</td>
+                    <td> {{ check.description }}</td>
+                    <td> {{ check.created_at }}</td>
                 </tr>
             {% endfor %}
             </tbody>

@@ -15,11 +15,11 @@
             <tbody>
             {% for url in urls %}
                 <tr>
-                    <td>{{ url['id'] }}</td>
-                    <td><a href="{{ url_for('get_url', url_id=url['id']) }}">{{ url['name'] }}</a></td>
-                    {% if url['created_at'] %}
-                        <td> {{ url['created_at'] }}</td>
-                        <td> {{ url['status_code'] }}</td>
+                    <td>{{ url.id }}</td>
+                    <td><a href="{{ url_for('get_url', url_id=url.id) }}">{{ url.name }}</a></td>
+                    {% if url.created_at %}
+                        <td> {{ url.created_at }}</td>
+                        <td> {{ url.status_code }}</td>
                     {% else %}
                         <td></td>
                         <td></td>
