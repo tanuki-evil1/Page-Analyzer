@@ -7,12 +7,6 @@ def open_connection_db(database_url: str):
     return psycopg2.connect(database_url)
 
 
-def insert_query(cur, table: str, query: str, params=tuple()) -> str:
-    cur.execute(query, params)
-    cur.execute(f'SELECT id FROM {table} ORDER BY id DESC LIMIT 1;')
-    return cur.fetchone()[0]
-
-
 def close_connection_db(conn) -> None:
     conn.close()
 
