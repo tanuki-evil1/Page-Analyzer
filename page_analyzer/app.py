@@ -25,10 +25,10 @@ def index():
 
 @app.get('/urls')
 def get_urls():
-    conn, cur = db.open_connection_db(DATABASE_URL)
-    urls = db.get_all_urls(cur)
-    all_checks = db.get_all_checks(cur)
-    db.close_connection_db(conn, cur)
+    conn = db.open_connection_db(DATABASE_URL)
+    urls = db.get_all_urls(conn)
+    all_checks = db.get_all_checks(conn)
+    db.close_connection_db(conn)
 
     checks_dict = {check['url_id']: check for check in all_checks}
     urls_join_check = []
@@ -53,18 +53,17 @@ def post_urls():
         return render_template('index.html', url=url, messages=msg), 422
 
     normalized_url = normalize_url(url)
-    conn, cur = db.open_connection_db(DATABASE_URL)
-    fetched_url = db.get_url_from_urls_by_name(cur, normalized_url)
-    db.close_connection_db(conn, cur)
+    conn = db.open_connection_db(DATABASE_URL)
+    fetched_url = db.get_url_from_urls_by_name(conn, normalized_url)
+    db.close_connection_db(conn)
 
     if fetched_url:
         flash('Страница уже существует', 'info')
         return redirect(url_for('get_url', url_id=fetched_url['id']), 302)
 
-    conn, cur = db.open_connection_db(DATABASE_URL)
-    url_id = db.insert_url(cur, normalized_url)
-    conn.commit()
-    db.close_connection_db(conn, cur)
+    conn = db.open_connection_db(DATABASE_URL)
+    url_id = db.insert_url(conn, normalized_url)
+    db.close_connection_db(conn)
 
     flash('Страница успешно добавлена', 'success')
     return redirect(url_for('get_url', url_id=url_id), 302)
@@ -75,25 +74,25 @@ def get_url(url_id: int):
     msg = get_flashed_messages(with_categories=True)
     msg = {'type': msg[0][0], 'msg': msg[0][1]} if msg else ''
 
-    conn, cur = db.open_connection_db(DATABASE_URL)
-    url = db.get_url_from_urls_by_id(cur, url_id)
-    db.close_connection_db(conn, cur)
+    conn = db.open_connection_db(DATABASE_URL)
+    url = db.get_url_from_urls_by_id(conn, url_id)
+    db.close_connection_db(conn)
 
     if not url:
         return render_template('404.html'), 404
 
-    conn, cur = db.open_connection_db(DATABASE_URL)
-    checks = db.get_url_checks(cur, url_id)
-    db.close_connection_db(conn, cur)
+    conn = db.open_connection_db(DATABASE_URL)
+    checks = db.get_url_checks(conn, url_id)
+    db.close_connection_db(conn)
 
     return render_template('url.html', url=url, checks=checks, messages=msg)
 
 
 @app.post('/urls/<int:url_id>/checks')
 def post_url(url_id: int):
-    conn, cur = db.open_connection_db(DATABASE_URL)
-    url = db.get_url_from_urls_by_id(cur, url_id)['name']
-    db.close_connection_db(conn, cur)
+    conn = db.open_connection_db(DATABASE_URL)
+    url = db.get_url_from_urls_by_id(conn, url_id)['name']
+    db.close_connection_db(conn)
 
     if not url:
         return render_template('404.html'), 404
@@ -101,10 +100,9 @@ def post_url(url_id: int):
     try:
         url_check = get_seo(url, url_id)
         flash('Страница успешно проверена', 'success')
-        conn, cur = db.open_connection_db(DATABASE_URL)
-        db.insert_check(cur, url_check)
-        conn.commit()
-        db.close_connection_db(conn, cur)
+        conn = db.open_connection_db(DATABASE_URL)
+        db.insert_check(conn, url_check)
+        db.close_connection_db(conn)
     except ValueError:
         flash('Произошла ошибка при проверке', 'danger')
 
