@@ -33,7 +33,7 @@ Ensure you have Python, Poetry, and PostgreSQL installed.
 Use the `Makefile` to simplify the installation and startup process:
 
 ```bash
-git clone https://github.com/Cur1yB/python-project-83.git
+git clone https://github.com/tanuki-evil1/Page-Analyzer.git
 cd python-project-83
 
 ## Configuration
