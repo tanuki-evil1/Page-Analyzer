@@ -34,7 +34,7 @@ Use the `Makefile` to simplify the installation and startup process:
 
 ```bash
 git clone https://github.com/tanuki-evil1/Page-Analyzer.git
-cd python-project-83
+cd Page-Analyzer
 
 ## Configuration
 Before running the application, you need to set up your environment variables. Duplicate the `.env.example` file and rename it to `.env`. Then, modify it with your actual data for the following variables:
