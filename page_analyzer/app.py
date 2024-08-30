@@ -111,5 +111,5 @@ def post_url(url_id: int):
 
 
 @app.errorhandler(404)
-def page_not_found():
+def page_not_found(item):
     return render_template('404.html'), 404
