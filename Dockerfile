@@ -11,8 +11,6 @@ WORKDIR /app
 COPY poetry.lock .
 COPY pyproject.toml .
 
-RUN make install
+RUN poetry install
 
 COPY . .
-
-CMD make start
